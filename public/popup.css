@@ -1,0 +1,155 @@
+.pd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(17, 24, 39, .58);
+  backdrop-filter: blur(5px);
+}
+.pd-overlay[hidden], .pd-view[hidden] { display: none !important; }
+.pd-card {
+  position: relative;
+  width: min(100%, 440px);
+  max-height: min(90vh, 760px);
+  overflow: auto;
+  padding: 30px;
+  border: 1px solid #fff;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 28px 90px #10182845;
+  color: #182230;
+  font: 14px/1.5 Inter, Arial, sans-serif;
+  animation: pd-appear .25s ease-out;
+}
+.pd-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  background: linear-gradient(90deg, #fb923c, #f97316, #ea580c);
+  content: "";
+}
+.pd-card *, .pd-card *::before, .pd-card *::after { box-sizing: border-box; }
+.pd-close {
+  position: absolute;
+  top: 13px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: #f5f5f5;
+  color: #475467;
+  font: 23px/1 Arial, sans-serif;
+  cursor: pointer;
+}
+.pd-icon {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 17px;
+  place-items: center;
+  border-radius: 21px;
+  background: linear-gradient(145deg, #fff0e4, #ffdfc2);
+  box-shadow: inset 0 0 0 1px #fed7aa;
+  color: #ea580c;
+}
+.pd-icon svg { width: 34px; height: 34px; }
+.pd-eyebrow {
+  margin-bottom: 9px;
+  color: #ea580c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-align: center;
+  text-transform: uppercase;
+}
+.pd-card h2 {
+  margin: 0 0 12px;
+  color: #182230;
+  font: 750 29px/1.16 Inter, Arial, sans-serif;
+  letter-spacing: -.8px;
+  text-align: center;
+}
+.pd-subtitle {
+  margin: 0 auto 20px;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: center;
+}
+.pd-benefits {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 15px;
+  border: 1px solid #ffead9;
+  border-radius: 14px;
+  background: #fffaf6;
+  list-style: none;
+}
+.pd-benefits li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.45; }
+.pd-check {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  place-items: center;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #15803d;
+  font-weight: 900;
+}
+.pd-primary {
+  width: 100%;
+  padding: 15px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(100deg, #f97316, #ea580c);
+  box-shadow: 0 7px 16px #f9731638;
+  color: #fff;
+  font: 800 15px/1.4 Inter, Arial, sans-serif;
+  cursor: pointer;
+}
+.pd-primary:hover { filter: brightness(.97); }
+.pd-primary:disabled { cursor: wait; opacity: .7; }
+.pd-later, .pd-back, .pd-email-option {
+  display: block;
+  margin: 13px auto 0;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: #667085;
+  font: 650 13px/1.4 Inter, Arial, sans-serif;
+  cursor: pointer;
+}
+.pd-later:hover, .pd-back:hover, .pd-email-option:hover { text-decoration: underline; }
+.pd-privacy { margin: 15px 0 0; color: #98a2b3; font-size: 11px; line-height: 1.5; text-align: center; }
+.pd-form { display: grid; gap: 12px; margin-top: 18px; }
+.pd-form label { color: #344054; font-size: 12px; font-weight: 750; }
+.pd-form input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #d0d5dd;
+  border-radius: 11px;
+  background: #fff;
+  color: #182230;
+  font: 14px Inter, Arial, sans-serif;
+}
+.pd-form input:focus { outline: 2px solid #f9731633; border-color: #f97316; }
+.pd-status { margin: 10px 0 0; color: #475467; font-size: 12px; line-height: 1.5; text-align: center; }
+.pd-status.error { color: #b42318; }
+.pd-status.success { color: #027a48; }
+@keyframes pd-appear {
+  from { opacity: 0; transform: translateY(10px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 480px) {
+  .pd-card { padding: 25px 20px 22px; border-radius: 20px; }
+  .pd-icon { width: 60px; height: 60px; margin-bottom: 14px; }
+  .pd-card h2 { font-size: 26px; }
+  .pd-benefits { padding: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .pd-card { animation: none; } }

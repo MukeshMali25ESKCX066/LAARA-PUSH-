@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#fffaf6">
+  <meta name="description" content="PushDesk web push notification dashboard">
+  <title>PushDesk — Notification Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="shell" id="shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/app#/" aria-label="PushDesk overview"><span class="brand-mark">➤</span>Push<span>Desk</span></a>
+      <div class="side-label">WORKSPACE</div>
+      <nav class="side-nav" id="side-nav" aria-label="Main navigation">
+        <a href="#/" data-route="/" class="nav-link"><span class="nav-icon">⌂</span>Overview</a>
+        <a href="#/campaigns" data-route="campaigns" class="nav-link"><span class="nav-icon">➤</span>Campaigns</a>
+        <a href="#/subscribers" data-route="subscribers" class="nav-link"><span class="nav-icon">♧</span>Subscribers</a>
+        <a href="#/sites" data-route="sites" class="nav-link"><span class="nav-icon">◎</span>Websites</a>
+      </nav>
+      <div class="side-label side-label-spaced">TOOLS</div>
+      <nav class="side-nav" aria-label="Tools">
+        <a href="#/integration" data-route="integration" class="nav-link"><span class="nav-icon">⌘</span>Integration</a>
+        <a href="#/templates" data-route="templates" class="nav-link"><span class="nav-icon">▤</span>Templates</a>
+        <a href="#/analytics" data-route="analytics" class="nav-link"><span class="nav-icon">▥</span>Analytics</a>
+        <a href="#/api" data-route="api" class="nav-link"><span class="nav-icon">⌁</span>API access</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="self-hosted-mark">✦</div>
+        <b>Your data, your server</b>
+        <p>Push notifications, powered by your own PushDesk instance.</p>
+        <a href="#/sites" class="sidebar-bottom-link">Manage websites <span>→</span></a>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="menu-toggle" type="button" aria-label="Open navigation">☰</button>
+        <div class="breadcrumb"><span>Workspace</span><span class="crumb-separator">/</span><b id="page-label">Overview</b></div>
+        <div class="topbar-right">
+          <label class="site-picker-wrap" aria-label="Select website">
+            <span class="picker-icon">◎</span>
+            <select id="site-picker" aria-label="Select website"><option value="">Loading websites…</option></select>
+          </label>
+          <div id="nav" class="account-menu"></div>
+        </div>
+      </header>
+      <main class="wrap" id="view" tabindex="-1"></main>
+    </div>
+  </div>
+  <div class="sidebar-scrim" id="sidebar-scrim"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
