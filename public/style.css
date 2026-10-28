@@ -152,6 +152,9 @@ textarea.campaign-control { min-height: 76px; resize: vertical; }
 .campaign-count, .campaign-optional { float: right; color: #98a2b3; font-size: 10px; font-weight: 500; }
 .campaign-required { margin-left: 3px; color: #e53935; }
 .campaign-help { display: block; margin-top: 5px; color: #667085; font-size: 10px; line-height: 1.45; }
+.campaign-upload-label { margin-top: 10px; }
+.campaign-upload-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.campaign-upload-actions .campaign-help { margin-top: 0; }
 .campaign-types { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
 .campaign-type { min-height: 67px; padding: 8px 3px; border: 1px solid var(--campaign-line); border-radius: 9px; background: #fff; color: #475467; font-size: 10px; font-weight: 700; line-height: 1.35; }
 .campaign-type span { display: block; margin-bottom: 3px; font-size: 18px; }

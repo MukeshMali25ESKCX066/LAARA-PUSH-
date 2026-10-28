@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs').promises;
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -14,6 +15,15 @@ if (process.env.VERCEL) { try { waitUntil = require('@vercel/functions').waitUnt
 const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
+
+const dataDir = path.resolve(process.env.DATA_DIR || path.join(__dirname, '..', 'data'));
+const uploadDir = path.join(dataDir, 'uploads');
+const imageTypes = new Map([
+  ['image/png', 'png'],
+  ['image/jpeg', 'jpg'],
+  ['image/webp', 'webp'],
+  ['image/gif', 'gif']
+]);
 
 let JWT_SECRET = process.env.JWT_SECRET || null;
 const ready = (async () => {
@@ -107,6 +117,31 @@ app.delete('/api/sites/:id', auth, ownSite, wrap(async (req, res) => {
 }));
 app.post('/api/sites/:id/rotate-key', auth, ownSite, wrap(async (req, res) => {
   const k = rand(24); await run('UPDATE sites SET api_key=? WHERE id=?', [k, req.site.id]); res.json({ api_key: k });
+}));
+
+app.post('/api/sites/:id/images', auth, ownSite, (req, res, next) => {
+  if (process.env.VERCEL) return next(httpErr(501, 'Image uploads require persistent storage and are unavailable on Vercel. Use a public image URL instead.'));
+  const type = (req.get('content-type') || '').split(';')[0].toLowerCase();
+  if (!imageTypes.has(type)) return next(httpErr(415, 'Upload a PNG, JPEG, WebP, or GIF image.'));
+  express.raw({ type: () => true, limit: '5mb' })(req, res, (error) => error ? next(error) : next());
+}, wrap(async (req, res) => {
+  const type = (req.get('content-type') || '').split(';')[0].toLowerCase();
+  const image = req.body;
+  if (!Buffer.isBuffer(image) || !image.length) throw httpErr(400, 'Choose an image to upload.');
+
+  const validSignature = type === 'image/png'
+    ? image.length >= 8 && image.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+    : type === 'image/jpeg'
+      ? image.length >= 3 && image[0] === 255 && image[1] === 216 && image[2] === 255
+      : type === 'image/webp'
+        ? image.length >= 12 && image.toString('ascii', 0, 4) === 'RIFF' && image.toString('ascii', 8, 12) === 'WEBP'
+        : image.length >= 6 && ['GIF87a', 'GIF89a'].includes(image.toString('ascii', 0, 6));
+  if (!validSignature) throw httpErr(400, 'The file contents do not match the selected image type.');
+
+  await fs.mkdir(uploadDir, { recursive: true });
+  const filename = `${rand(16)}.${imageTypes.get(type)}`;
+  await fs.writeFile(path.join(uploadDir, filename), image, { flag: 'wx' });
+  res.json({ url: `${origin(req)}/uploads/${filename}` });
 }));
 
 app.get('/api/sites/:id/stats', auth, ownSite, wrap(async (req, res) => {
@@ -396,6 +431,7 @@ app.get('/demo/:key', (req, res) => {
 });
 
 // ---------- static panel (on Vercel the files in /public are served by the CDN instead) ----------
+app.use('/uploads', express.static(uploadDir, { immutable: true, maxAge: '1y', fallthrough: false }));
 if (!process.env.VERCEL) {
   app.use(express.static(path.join(__dirname, '..', 'public')));
   app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'app.html')));

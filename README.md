@@ -20,7 +20,7 @@ Requires Node 18+. With no `TURSO_DATABASE_URL` set it stores data in `data/push
 1. **Integration tab** gives you the embed script `<script src="BASE_URL/sdk/SITEKEY.js" async>` and `pushdesk-sw.js`.
 2. Upload `pushdesk-sw.js` to the root of the customer website (service workers must be served from the site's own origin).
 3. Visitors see an opt-in prompt; their browser subscription is stored in SQLite (`data/pushdesk.db`) with browser/OS/device/country/language/page.
-4. **Send** tab: compose, optionally segment, send. Delivery runs in the background in batches of 100; expired subscriptions are deactivated automatically.
+4. **Send** tab: compose, optionally segment, and send. Campaigns without a custom notification icon use the PushDesk logo. Add a campaign image using a public URL or upload a PNG, JPEG, WebP, or GIF up to 5 MB. Uploaded images are stored in `data/uploads/` and served publicly so subscriber browsers can display them. Delivery runs in the background in batches of 100; expired subscriptions are deactivated automatically.
 5. Clicks are tracked by the service worker and shown per campaign.
 
 Quick local test: **Integration → Open test page** previews the website opt-in popup on `localhost` (allowed as a secure context). Choose **Allow** to subscribe, or select **Show popup again** to preview it again.
@@ -42,7 +42,7 @@ GET /api/v1/campaigns/:id
 ## Production notes
 
 - Serve behind HTTPS (nginx/Caddy). Web Push does not work on plain http except localhost.
-- Keep `data/` backed up. It holds subscribers and your VAPID keys. **If you lose the VAPID keys, all existing subscribers stop working.**
+- Keep `data/` backed up. It holds subscribers, uploaded campaign images, and your VAPID keys. **If you lose the VAPID keys, all existing subscribers stop working.**
 - Country detection reads `cf-ipcountry` (Cloudflare) or `x-vercel-ip-country`; otherwise it shows `Unknown`. Add a GeoIP lookup in `server/index.js` (`/public/subscribe`) if you need it.
 - iOS: Safari only supports push for sites added to the Home Screen (iOS 16.4+).
 - Run with PM2 or systemd: `pm2 start server/index.js --name pushdesk`.
@@ -60,7 +60,7 @@ WordPress plugin, scheduled/automatic sends (AutoMagic, YouTube push, push-on-pu
 4. Add Environment Variables: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BASE_URL` (your final https URL), `VAPID_SUBJECT`.
 5. Deploy, open `https://YOUR-PROJECT.vercel.app/app`, create the admin account, then set `ALLOW_SIGNUP=false` and redeploy.
 
-Notes: VAPID keys are generated once and stored in the database, so redeploys never break existing subscribers. Campaigns keep sending after the response using `waitUntil`; the function limit is 60 seconds on the free plan, which is fine for small and medium lists. For very large lists use a VPS instead.
+Notes: VAPID keys are generated once and stored in the database, so redeploys never break existing subscribers. Campaigns keep sending after the response using `waitUntil`; the function limit is 60 seconds on the free plan, which is fine for small and medium lists. Vercel's serverless filesystem is not persistent, so use public image URLs instead of uploads there. For very large lists use a VPS instead.
 
 
 ## Dashboard

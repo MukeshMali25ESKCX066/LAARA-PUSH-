@@ -258,7 +258,10 @@ async function send(el, site) {
             <textarea class="campaign-control" id="campaign-body" name="body" maxlength="400" placeholder="Add a little more detail for your subscribers"></textarea></div>
           <div class="campaign-field"><label class="campaign-field-label" for="campaign-image">Campaign image URL <span class="campaign-optional">(optional)</span></label>
             <input class="campaign-control" id="campaign-image" name="image" type="url" placeholder="https://example.com/image.jpg">
-            <span class="campaign-help">Use a public HTTP or HTTPS image URL.</span>
+            <span class="campaign-help">Paste a public image URL or upload a PNG, JPEG, WebP, or GIF (up to 5 MB).</span>
+            <label class="campaign-field-label campaign-upload-label" for="campaign-image-file">Upload image</label>
+            <input class="campaign-control" id="campaign-image-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+            <div class="campaign-upload-actions"><button class="btn sec sm" id="campaign-image-remove" type="button">Remove image</button><span class="campaign-help" id="campaign-upload-status" role="status" aria-live="polite"></span></div>
           </div>
           <div class="campaign-field"><label class="campaign-field-label" for="campaign-button-label">Preview action label</label>
             <select class="campaign-control" id="campaign-button-label"><option>Buy Now</option><option>Shop Now</option><option>View Product</option><option>Claim Offer</option><option>Read More</option><option>Visit Website</option><option>Learn More</option></select>
@@ -322,6 +325,52 @@ async function send(el, site) {
   const scheduleAt = $('#campaign-schedule-at');
   const submitButton = f.querySelector('[type="submit"]');
   const headerSubmit = el.querySelector('[data-submit]');
+  const imageInput = $('#campaign-image-file');
+  const imageUrlInput = f.elements.image;
+  const imageUploadStatus = $('#campaign-upload-status');
+  imageUrlInput.addEventListener('input', () => {
+    if (imageInput.disabled) return;
+    imageInput.value = '';
+    imageUploadStatus.textContent = '';
+  });
+  imageInput.addEventListener('change', async () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    imageUploadStatus.textContent = '';
+    if (file.size > 5 * 1024 * 1024) {
+      imageUploadStatus.textContent = 'Image must be 5 MB or smaller.';
+      imageInput.value = '';
+      return;
+    }
+    imageInput.disabled = true;
+    imageUrlInput.disabled = true;
+    imageUploadStatus.textContent = 'Uploading image...';
+    try {
+      const response = await fetch(`/api/sites/${site.id}/images`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type, ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) },
+        body: file
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 401 && S.token) { logout(); throw new Error('Session expired'); }
+      if (!response.ok) throw new Error(result.error || 'Image upload failed');
+      imageUrlInput.value = result.url;
+      imageUploadStatus.textContent = 'Image uploaded.';
+      updatePreview();
+    } catch (error) {
+      imageUploadStatus.textContent = `Could not upload image: ${error.message}`;
+      imageInput.value = '';
+    } finally {
+      imageInput.disabled = false;
+      imageUrlInput.disabled = false;
+    }
+  });
+  $('#campaign-image-remove').addEventListener('click', () => {
+    imageUrlInput.value = '';
+    imageInput.value = '';
+    imageUploadStatus.textContent = '';
+    updatePreview();
+  });
   const updateScheduleControls = () => {
     scheduleAt.hidden = !scheduleToggle.checked;
     scheduleAt.required = scheduleToggle.checked;
@@ -348,8 +397,8 @@ async function send(el, site) {
     $('#campaign-body-count').textContent = `${f.elements.body.value.length}/400`;
     $('#campaign-desktop-title').textContent = title;
     $('#campaign-desktop-body').textContent = body;
-    f.querySelectorAll('.campaign-mobile-title').forEach((node) => { node.textContent = title; });
-    f.querySelectorAll('.campaign-mobile-body').forEach((node) => { node.textContent = body; });
+    el.querySelectorAll('.campaign-mobile-title').forEach((node) => { node.textContent = title; });
+    el.querySelectorAll('.campaign-mobile-body').forEach((node) => { node.textContent = body; });
     $('#campaign-button-label').value = $('#campaign-button-label').value;
     el.querySelectorAll('.campaign-preview-action').forEach((link) => { link.textContent = $('#campaign-button-label').value; link.href = url || '#'; });
     ['campaign-desktop-origin', 'campaign-android-origin'].forEach((id) => { $(`#${id}`).textContent = `${host} · now`; });
