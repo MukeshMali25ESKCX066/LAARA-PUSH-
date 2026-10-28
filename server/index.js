@@ -290,8 +290,8 @@ async function saveSubscription(sub){
 }
 async function subscribe(){
   if(!supported())throw new Error('Push is not supported in this browser');
-  var reg=await navigator.serviceWorker.register(SW);await navigator.serviceWorker.ready;
   var perm=await Notification.requestPermission();if(perm!=='granted')throw new Error('Permission '+perm);
+  var reg=await navigator.serviceWorker.register(SW);await navigator.serviceWorker.ready;
   var sub=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(VAPID)});
   return saveSubscription(sub);
 }
@@ -347,7 +347,7 @@ function makePopup(){
     var status=overlay.querySelector('#pd-push-status'),button=this;
     button.disabled=true;status.textContent='Connecting…';status.className='pd-status';
     try{await subscribe();status.textContent='You\\u2019re subscribed. Thanks for staying connected!';status.className='pd-status success';window.setTimeout(close,1400)}
-    catch(error){status.textContent=error.message==='Permission denied'?'Notifications are blocked in browser settings. Email updates are still available.':'Could not complete the push subscription. Please try again or choose email updates.';status.className='pd-status error';if(!supported()||('Notification' in window&&Notification.permission==='denied'))window.setTimeout(showEmail,1000)}
+    catch(error){if(error.message==='Permission denied'||error.message==='Permission default'){showEmail();return}status.textContent=!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
     finally{button.disabled=false}
   };
   overlay.querySelector('#pd-email-form').onsubmit=async function(event){

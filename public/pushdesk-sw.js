@@ -5,10 +5,11 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('push', (event) => {
   let d = {};
   try { d = event.data.json(); } catch (_) { d = { title: 'Notification', body: event.data ? event.data.text() : '' }; }
+  const icon = d.icon || (d.server ? d.server.replace(/\/$/, '') + '/pushdesk-logo.svg' : undefined);
   event.waitUntil(self.registration.showNotification(d.title || 'Notification', {
     body: d.body || '',
-    icon: d.icon || undefined,
-    badge: d.icon || undefined,
+    icon,
+    badge: icon,
     image: d.image || undefined,
     data: d
   }));
