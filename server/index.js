@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs').promises;
-const { put } = require('@vercel/blob');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -122,6 +121,7 @@ app.post('/api/sites/:id/rotate-key', auth, ownSite, wrap(async (req, res) => {
 }));
 
 app.post('/api/sites/:id/images', auth, ownSite, (req, res, next) => {
+  if (process.env.VERCEL) return next(httpErr(501, 'Image uploads are not available on Vercel. Use a public image URL instead.'));
   const type = (req.get('content-type') || '').split(';')[0].toLowerCase();
   if (!imageTypes.has(type)) return next(httpErr(415, 'Upload a PNG, JPEG, WebP, or GIF image.'));
   express.raw({ type: () => true, limit: maxImageUploadSize })(req, res, (error) => error ? next(error) : next());
@@ -140,13 +140,6 @@ app.post('/api/sites/:id/images', auth, ownSite, (req, res, next) => {
   if (!validSignature) throw httpErr(400, 'The file contents do not match the selected image type.');
 
   const filename = `${rand(16)}.${imageTypes.get(type)}`;
-  if (process.env.VERCEL) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN && !(process.env.BLOB_STORE_ID && process.env.VERCEL_OIDC_TOKEN)) {
-      throw httpErr(503, 'Image uploads need a connected Vercel Blob store. Connect one in the Vercel Storage settings and redeploy.');
-    }
-    const blob = await put(`campaign-images/${filename}`, image, { access: 'public', contentType: type });
-    return res.json({ url: blob.url });
-  }
   await fs.mkdir(uploadDir, { recursive: true });
   await fs.writeFile(path.join(uploadDir, filename), image, { flag: 'wx' });
   res.json({ url: `${origin(req)}/uploads/${filename}` });
