@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs').promises;
+const { put } = require('@vercel/blob');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -25,9 +26,6 @@ const imageTypes = new Map([
   ['image/gif', 'gif']
 ]);
 const maxImageUploadSize = 4 * 1024 * 1024;
-const supabaseUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
-const supabaseServiceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-const supabaseStorageBucket = (process.env.SUPABASE_STORAGE_BUCKET || 'larapush-images').trim();
 
 let JWT_SECRET = process.env.JWT_SECRET || null;
 const ready = (async () => {
@@ -142,30 +140,12 @@ app.post('/api/sites/:id/images', auth, ownSite, (req, res, next) => {
   if (!validSignature) throw httpErr(400, 'The file contents do not match the selected image type.');
 
   const filename = `${rand(16)}.${imageTypes.get(type)}`;
-  if (process.env.VERCEL || supabaseUrl || supabaseServiceRoleKey) {
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      throw httpErr(503, 'Image uploads need SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. Configure both in Vercel and redeploy.');
+  if (process.env.VERCEL) {
+    if (!process.env.BLOB_READ_WRITE_TOKEN && !(process.env.BLOB_STORE_ID && process.env.VERCEL_OIDC_TOKEN)) {
+      throw httpErr(503, 'Image uploads need a connected Vercel Blob store. Connect one in the Vercel Storage settings and redeploy.');
     }
-    if (process.env.VERCEL && new URL(supabaseUrl).protocol !== 'https:') {
-      throw httpErr(503, 'SUPABASE_URL must use HTTPS on Vercel.');
-    }
-    if (!supabaseStorageBucket) throw httpErr(503, 'SUPABASE_STORAGE_BUCKET cannot be empty.');
-    const objectPath = `campaign-images/${filename}`;
-    const storageUrl = `${supabaseUrl}/storage/v1/object/${encodeURIComponent(supabaseStorageBucket)}/${objectPath}`;
-    const storageResponse = await fetch(storageUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${supabaseServiceRoleKey}`,
-        apikey: supabaseServiceRoleKey,
-        'Content-Type': type,
-        'x-upsert': 'false'
-      },
-      body: image
-    });
-    if (!storageResponse.ok) {
-      throw httpErr(502, `Supabase Storage upload failed (HTTP ${storageResponse.status}). Check the project URL, service-role key, and that the public "${supabaseStorageBucket}" bucket exists.`);
-    }
-    return res.json({ url: `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(supabaseStorageBucket)}/${objectPath}` });
+    const blob = await put(`campaign-images/${filename}`, image, { access: 'public', contentType: type });
+    return res.json({ url: blob.url });
   }
   await fs.mkdir(uploadDir, { recursive: true });
   await fs.writeFile(path.join(uploadDir, filename), image, { flag: 'wx' });
