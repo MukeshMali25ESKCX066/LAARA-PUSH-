@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs').promises;
+const { put } = require('@vercel/blob');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -24,6 +25,7 @@ const imageTypes = new Map([
   ['image/webp', 'webp'],
   ['image/gif', 'gif']
 ]);
+const maxImageUploadSize = 4 * 1024 * 1024;
 
 let JWT_SECRET = process.env.JWT_SECRET || null;
 const ready = (async () => {
@@ -120,10 +122,9 @@ app.post('/api/sites/:id/rotate-key', auth, ownSite, wrap(async (req, res) => {
 }));
 
 app.post('/api/sites/:id/images', auth, ownSite, (req, res, next) => {
-  if (process.env.VERCEL) return next(httpErr(501, 'Image uploads require persistent storage and are unavailable on Vercel. Use a public image URL instead.'));
   const type = (req.get('content-type') || '').split(';')[0].toLowerCase();
   if (!imageTypes.has(type)) return next(httpErr(415, 'Upload a PNG, JPEG, WebP, or GIF image.'));
-  express.raw({ type: () => true, limit: '5mb' })(req, res, (error) => error ? next(error) : next());
+  express.raw({ type: () => true, limit: maxImageUploadSize })(req, res, (error) => error ? next(error) : next());
 }, wrap(async (req, res) => {
   const type = (req.get('content-type') || '').split(';')[0].toLowerCase();
   const image = req.body;
@@ -138,8 +139,15 @@ app.post('/api/sites/:id/images', auth, ownSite, (req, res, next) => {
         : image.length >= 6 && ['GIF87a', 'GIF89a'].includes(image.toString('ascii', 0, 6));
   if (!validSignature) throw httpErr(400, 'The file contents do not match the selected image type.');
 
-  await fs.mkdir(uploadDir, { recursive: true });
   const filename = `${rand(16)}.${imageTypes.get(type)}`;
+  if (process.env.VERCEL) {
+    if (!process.env.BLOB_READ_WRITE_TOKEN && !(process.env.BLOB_STORE_ID && process.env.VERCEL_OIDC_TOKEN)) {
+      throw httpErr(503, 'Image uploads need a connected Vercel Blob store. Connect one in the Vercel Storage settings and redeploy.');
+    }
+    const blob = await put(`campaign-images/${filename}`, image, { access: 'public', contentType: type });
+    return res.json({ url: blob.url });
+  }
+  await fs.mkdir(uploadDir, { recursive: true });
   await fs.writeFile(path.join(uploadDir, filename), image, { flag: 'wx' });
   res.json({ url: `${origin(req)}/uploads/${filename}` });
 }));
