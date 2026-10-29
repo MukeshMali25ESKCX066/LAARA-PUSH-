@@ -244,7 +244,7 @@ app.post('/api/sites/:id/campaigns/:cid/cancel', auth, ownSite, wrap(async (req,
 async function createCampaign(site, b, req) {
   const title = clean(b.title, 120);
   if (!title) throw httpErr(400, 'Title is required');
-  const body = clean(b.body, 400), url = clean(b.url, 1000), icon = clean(b.icon, 1000), image = clean(b.image, 1000);
+  const body = clean(b.body, 400), url = clean(b.url, 1000), icon = clean(b.icon, 1000), image = clean(b.image, 1000), actionLabel = clean(b.action_label, 40);
   if (![url, icon, image].every(isUrl)) throw httpErr(400, 'URLs must start with http:// or https://');
   let scheduledAt = null;
   if (b.scheduled_at) {
@@ -258,8 +258,8 @@ async function createCampaign(site, b, req) {
     }
   }
   const status = scheduledAt ? 'scheduled' : 'sending';
-  const { id } = await run('INSERT INTO campaigns(site_id,title,body,url,icon,image,segment,status,scheduled_at) VALUES(?,?,?,?,?,?,?,?,?)',
-    [site.id, title, body, url, icon, image, JSON.stringify(normalizeSegment(b.segment)), status, scheduledAt]);
+  const { id } = await run('INSERT INTO campaigns(site_id,title,body,url,icon,image,action_label,segment,status,scheduled_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+    [site.id, title, body, url, icon, image, actionLabel, JSON.stringify(normalizeSegment(b.segment)), status, scheduledAt]);
   if (scheduledAt) return get('SELECT * FROM campaigns WHERE id=?', [id]);
   const job = sendCampaign(id, origin(req)).catch(async (e) => {
     console.error('send failed', e); await run("UPDATE campaigns SET status='failed' WHERE id=?", [id]);

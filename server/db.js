@@ -93,6 +93,10 @@ async function initDb() {
       if (!columns.some((column) => column.name === 'scheduled_at')) throw error;
     }
   }
+  columns = await all('PRAGMA table_info(campaigns)');
+  if (!columns.some((column) => column.name === 'action_label')) {
+    await run('ALTER TABLE campaigns ADD COLUMN action_label TEXT DEFAULT \'\'');
+  }
   await run('CREATE INDEX IF NOT EXISTS idx_campaigns_scheduled ON campaigns(status, scheduled_at)');
 }
 

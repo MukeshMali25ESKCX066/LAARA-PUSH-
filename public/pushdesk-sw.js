@@ -6,11 +6,13 @@ self.addEventListener('push', (event) => {
   let d = {};
   try { d = event.data.json(); } catch (_) { d = { title: 'Notification', body: event.data ? event.data.text() : '' }; }
   const icon = d.icon || (d.server ? d.server.replace(/\/$/, '') + '/pushdesk-logo.svg' : undefined);
+  const actions = d.url && d.actionLabel ? [{ action: 'open', title: d.actionLabel }] : [];
   event.waitUntil(self.registration.showNotification(d.title || 'Notification', {
     body: d.body || '',
     icon,
     badge: icon,
     image: d.image || undefined,
+    actions,
     data: d
   }));
 });

@@ -73,9 +73,12 @@ async function sendCampaign(campaignId, serverOrigin) {
   const subs = await all('SELECT id, endpoint, p256dh, auth ' + sql, params);
   await run('UPDATE campaigns SET total=? WHERE id=?', [subs.length, c.id]);
 
+  const site = await get('SELECT domain FROM sites WHERE id=?', [c.site_id]);
+  const siteDomain = String(site && site.domain || '').trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const favicon = siteDomain ? `https://${siteDomain}/favicon.ico` : '';
   const payload = JSON.stringify({
-    title: c.title, body: c.body || '', url: c.url || '', icon: c.icon || '', image: c.image || '',
-    campaignId: c.id, server: serverOrigin
+    title: c.title, body: c.body || '', url: c.url || '', icon: c.icon || favicon, image: c.image || '',
+    actionLabel: c.action_label || '', campaignId: c.id, server: serverOrigin
   });
   const CHUNK = 100;
   await run('UPDATE campaigns SET sent=0, failed=0 WHERE id=?', [c.id]);

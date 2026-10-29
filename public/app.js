@@ -397,7 +397,7 @@ async function send(el, site) {
   scheduleToggle.addEventListener('change', updateScheduleControls);
   const payload = () => ({
     title: f.elements.title.value.trim(), body: f.elements.body.value, url: f.elements.url.value,
-    icon: f.elements.icon.value, image: f.elements.image.value, segment: segment(),
+    icon: f.elements.icon.value, image: f.elements.image.value, action_label: $('#campaign-button-label').value, segment: segment(),
     scheduled_at: scheduleToggle.checked ? new Date(scheduleAt.value).toISOString() : null
   });
   const previewUrl = (value) => { try { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) ? u.href : ''; } catch (_) { return ''; } };
