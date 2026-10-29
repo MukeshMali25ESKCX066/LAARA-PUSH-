@@ -348,7 +348,7 @@ async function send(el, site) {
     try {
       const cloudinary = await api('/cloudinary-config');
       let result;
-      if (cloudinary.configured) {
+      if (cloudinary.configured && cloudinary.uploadPreset) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', cloudinary.uploadPreset);
