@@ -346,14 +346,28 @@ async function send(el, site) {
     imageUrlInput.disabled = true;
     imageUploadStatus.textContent = 'Uploading image...';
     try {
-      const response = await fetch(`/api/sites/${site.id}/images`, {
-        method: 'POST',
-        headers: { 'Content-Type': file.type, ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) },
-        body: file
-      });
-      const result = await response.json().catch(() => ({}));
-      if (response.status === 401 && S.token) { logout(); throw new Error('Session expired'); }
-      if (!response.ok) throw new Error(result.error || 'Image upload failed');
+      const cloudinary = await api('/cloudinary-config');
+      let result;
+      if (cloudinary.configured) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', cloudinary.uploadPreset);
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudinary.cloudName)}/image/upload`, {
+          method: 'POST', body: formData
+        });
+        result = await response.json();
+        if (!response.ok) throw new Error(result.error?.message || 'Cloudinary upload failed');
+        result = { url: result.secure_url };
+      } else {
+        const response = await fetch(`/api/sites/${site.id}/images`, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type, ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) },
+          body: file
+        });
+        result = await response.json().catch(() => ({}));
+        if (response.status === 401 && S.token) { logout(); throw new Error('Session expired'); }
+        if (!response.ok) throw new Error(result.error || 'Image upload failed');
+      }
       imageUrlInput.value = result.url;
       imageUploadStatus.textContent = 'Image uploaded.';
       updatePreview();

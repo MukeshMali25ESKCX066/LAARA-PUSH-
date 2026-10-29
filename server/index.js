@@ -95,6 +95,11 @@ app.post('/api/auth/login', wrap(async (req, res) => {
   res.json({ token: token(u), email: u.email });
 }));
 app.get('/api/me', auth, (req, res) => res.json({ ...req.user, base_url: origin(req) }));
+app.get('/api/cloudinary-config', auth, (req, res) => {
+  const cloudName = clean(process.env.CLOUDINARY_CLOUD_NAME, 200);
+  const uploadPreset = clean(process.env.CLOUDINARY_UPLOAD_PRESET, 200);
+  res.json({ configured: !!cloudName && !!uploadPreset, cloudName, uploadPreset });
+});
 
 // ---------- sites ----------
 app.get('/api/sites', auth, wrap(async (req, res) => {
