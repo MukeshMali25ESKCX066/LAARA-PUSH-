@@ -439,7 +439,6 @@ async function checkAndShow(){
     try{var reg=await navigator.serviceWorker.getRegistration(SW),sub=reg&&await reg.pushManager.getSubscription();if(!sub)await subscribe();else await saveSubscription(sub)}catch(error){console.error('PushDesk: could not restore existing push subscription',error)}
     return;
   }
-  if(!PREVIEW&&'Notification' in window&&Notification.permission==='denied')return;
   var amount=count(LATER_COUNT);
   if(!PREVIEW&&amount>=3){storageSet(NEXT_PROMPT,Date.now()+864e5);return}
   var nextAt=Number(storageGet(NEXT_PROMPT)||0);
