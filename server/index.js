@@ -404,7 +404,7 @@ function makePopup(){
     '<div class="pd-view" id="pd-push-view"><div class="pd-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/><path d="M19 3l1.5-1.5M21 7h2"/></svg></div>'+
     '<div class="pd-eyebrow"><span id="pd-site-name"></span> updates</div><h2 id="pd-title">Don\\u2019t Miss What\\u2019s New!</h2><p class="pd-subtitle">Stay updated with the latest news, useful updates and important announcements\\u2014delivered straight to your device.</p>'+
     '<ul class="pd-benefits"><li><span class="pd-check">✓</span><span>Get important updates on time</span></li><li><span class="pd-check">✓</span><span>Be among the first to know what\\u2019s new</span></li><li><span class="pd-check">✓</span><span>Receive updates that matter to you</span></li></ul>'+
-    '<button class="pd-primary" id="pd-allow" type="button">🔔 Yes, Keep Me Updated</button><button class="pd-email-option" id="pd-email-option" type="button">Prefer email? Get updates in your inbox</button><button class="pd-later" id="pd-later" type="button">Maybe Later</button>'+
+    '<button class="pd-primary" id="pd-allow" type="button">🔔 Yes, Keep Me Updated</button><button class="pd-later" id="pd-later" type="button">Maybe Later</button>'+
     '<p class="pd-privacy">Your choice matters. You can change notification settings in your browser anytime.</p><p class="pd-status" id="pd-push-status" aria-live="polite"></p></div>'+
     '<div class="pd-view" id="pd-email-view" hidden><div class="pd-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>'+
     '<div class="pd-eyebrow">Stay connected</div><h2>Get Updates in Your Inbox</h2><p class="pd-subtitle">Prefer email updates? Sign up to receive this website\\u2019s latest stories and important updates directly in your inbox.</p>'+
@@ -413,7 +413,6 @@ function makePopup(){
   document.body.appendChild(overlay);overlay.querySelector('#pd-site-name').textContent=location.hostname;
   overlay.querySelector('#pd-close').onclick=defer;
   overlay.querySelector('#pd-later').onclick=defer;
-  overlay.querySelector('#pd-email-option').onclick=showEmail;
   overlay.querySelector('#pd-email-later').onclick=defer;
   overlay.querySelector('#pd-back').onclick=function(){setView('push')};
   overlay.addEventListener('click',function(event){if(event.target===overlay)defer()});

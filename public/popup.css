@@ -115,7 +115,7 @@
 }
 .pd-primary:hover { filter: brightness(.97); }
 .pd-primary:disabled { cursor: wait; opacity: .7; }
-.pd-later, .pd-back, .pd-email-option {
+.pd-later, .pd-back {
   display: block;
   margin: 13px auto 0;
   padding: 8px 14px;
@@ -125,7 +125,7 @@
   font: 650 13px/1.4 Inter, Arial, sans-serif;
   cursor: pointer;
 }
-.pd-later:hover, .pd-back:hover, .pd-email-option:hover { text-decoration: underline; }
+.pd-later:hover, .pd-back:hover { text-decoration: underline; }
 .pd-privacy { margin: 15px 0 0; color: #98a2b3; font-size: 11px; line-height: 1.5; text-align: center; }
 .pd-form { display: grid; gap: 12px; margin-top: 18px; }
 .pd-form label { color: #344054; font-size: 12px; font-weight: 750; }
