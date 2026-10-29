@@ -440,7 +440,7 @@ async function checkAndShow(){
     return;
   }
   var amount=count(LATER_COUNT);
-  if(!PREVIEW&&amount>=3){storageSet(NEXT_PROMPT,Date.now()+864e5);return}
+  if(!PREVIEW&&amount>=3){makePopup();previousFocus=document.activeElement;setView('email');return}
   var nextAt=Number(storageGet(NEXT_PROMPT)||0);
   if(!PREVIEW&&nextAt>Date.now()){window.setTimeout(banner,nextAt-Date.now());return}
   makePopup();
