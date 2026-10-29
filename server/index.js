@@ -389,7 +389,7 @@ function defer(){
   }
   var amount=count(LATER_COUNT)+1;
   storageSet(LATER_COUNT,amount);
-  if(amount>=3){storageSet(NEXT_PROMPT,Date.now()+864e5);close();window.setTimeout(banner,864e5);return}
+  if(amount>=3){storageSet(NEXT_PROMPT,Date.now()+864e5);makePopup();setView('email');return}
   storageSet(NEXT_PROMPT,Date.now()+2000);
   close();
   window.setTimeout(banner,2000);
@@ -421,7 +421,7 @@ function makePopup(){
     var status=overlay.querySelector('#pd-push-status'),button=this;
     button.disabled=true;status.textContent='Connecting…';status.className='pd-status';
     try{await subscribe();status.textContent='You\\u2019re subscribed. Thanks for staying connected!';status.className='pd-status success';window.setTimeout(close,1400)}
-    catch(error){if(error.message==='Permission denied'){close();return}status.textContent=error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
+    catch(error){if(error.message==='Permission denied'){defer();return}status.textContent=error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
     finally{button.disabled=false}
   };
   overlay.querySelector('#pd-email-form').onsubmit=async function(event){
@@ -436,9 +436,10 @@ function makePopup(){
 async function checkAndShow(){
   if(window.PUSHDESK_NO_PROMPT||(!PREVIEW&&(storageGet(DONE)==='1'||storageGet(EMAIL_DONE)==='1')))return;
   if(!PREVIEW&&'Notification' in window&&Notification.permission==='granted'){
-    try{var reg=await navigator.serviceWorker.getRegistration(SW),sub=reg&&await reg.pushManager.getSubscription();if(sub){await saveSubscription(sub);return}}catch(error){console.error('PushDesk: could not sync existing push subscription',error)}
-    makePopup();previousFocus=document.activeElement;setView('push');return;
+    try{var reg=await navigator.serviceWorker.getRegistration(SW),sub=reg&&await reg.pushManager.getSubscription();if(!sub)await subscribe();else await saveSubscription(sub)}catch(error){console.error('PushDesk: could not restore existing push subscription',error)}
+    return;
   }
+  if(!PREVIEW&&'Notification' in window&&Notification.permission==='denied')return;
   var amount=count(LATER_COUNT);
   if(!PREVIEW&&amount>=3){storageSet(NEXT_PROMPT,Date.now()+864e5);return}
   var nextAt=Number(storageGet(NEXT_PROMPT)||0);
