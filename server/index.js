@@ -421,7 +421,7 @@ function makePopup(){
     var status=overlay.querySelector('#pd-push-status'),button=this;
     button.disabled=true;status.textContent='Connecting…';status.className='pd-status';
     try{await subscribe();status.textContent='You\\u2019re subscribed. Thanks for staying connected!';status.className='pd-status success';window.setTimeout(close,1400)}
-    catch(error){if(error.message==='Permission denied'||error.message==='Permission default'){showEmail();return}status.textContent=!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
+    catch(error){status.textContent=error.message==='Permission denied'?'Notifications were blocked. Allow notifications in your browser settings.':error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
     finally{button.disabled=false}
   };
   overlay.querySelector('#pd-email-form').onsubmit=async function(event){
@@ -437,8 +437,7 @@ async function checkAndShow(){
   if(window.PUSHDESK_NO_PROMPT||(!PREVIEW&&(storageGet(DONE)==='1'||storageGet(EMAIL_DONE)==='1')))return;
   if(!PREVIEW&&'Notification' in window&&Notification.permission==='granted'){
     try{var reg=await navigator.serviceWorker.getRegistration(SW),sub=reg&&await reg.pushManager.getSubscription();if(sub){await saveSubscription(sub);return}}catch(error){console.error('PushDesk: could not sync existing push subscription',error)}
-    if(count(LATER_COUNT)>=3){showEmail();return}
-    showEmail();return;
+    makePopup();previousFocus=document.activeElement;setView('push');return;
   }
   var amount=count(LATER_COUNT);
   if(!PREVIEW&&amount>=3){showEmail();return}
