@@ -355,6 +355,7 @@ var previousFocus=null,overlay=null;
 function b64(s){var p='='.repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,'+').replace(/_/g,'/'),r=atob(b),o=new Uint8Array(r.length);for(var i=0;i<r.length;i++)o[i]=r.charCodeAt(i);return o;}
 function storageGet(key){try{return localStorage.getItem(key)}catch(e){return null}}
 function storageSet(key,value){try{localStorage.setItem(key,String(value))}catch(e){}}
+function storageRemove(key){try{localStorage.removeItem(key)}catch(e){}} 
 function supported(){return 'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;}
 function post(path,data){return fetch(SERVER+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(async function(response){if(!response.ok){var result=await response.json().catch(function(){return {}});throw new Error(result.error||'Request failed')}return response.json()})}
 async function saveSubscription(sub){
@@ -385,7 +386,7 @@ function close(){if(!overlay)return;overlay.hidden=true;document.body.style.over
 function showEmail(){setView('email')}
 function defer(){
   if(overlay&&!overlay.querySelector('#pd-email-view').hidden){
-    storageSet(LATER_COUNT,0);storageSet(NEXT_PROMPT,Date.now()+864e5);close();window.setTimeout(banner,864e5);return;
+    storageRemove(LATER_COUNT);storageRemove(NEXT_PROMPT);close();return;
   }
   var amount=count(LATER_COUNT)+1;
   storageSet(LATER_COUNT,amount);
