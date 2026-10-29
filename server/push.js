@@ -78,24 +78,45 @@ async function sendCampaign(campaignId, serverOrigin) {
     campaignId: c.id, server: serverOrigin
   });
   const CHUNK = 100;
-  for (let i = 0; i < subs.length; i += CHUNK) {
-    const slice = subs.slice(i, i + CHUNK);
+  await run('UPDATE campaigns SET sent=0, failed=0 WHERE id=?', [c.id]);
+  let sent = 0, failed = 0;
+  const retryQueue = [];
+  const isTransient = (error) => {
+    const code = error && error.statusCode;
+    return code === 429 || (code >= 500 && code < 600) || ['ECONNRESET', 'ECONNREFUSED', 'EAI_AGAIN', 'ENETUNREACH', 'ETIMEDOUT'].includes(error && error.code);
+  };
+  const deliver = async (slice) => {
     const results = await Promise.allSettled(slice.map((s) =>
       sendWithRetry({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
     ));
-    let ok = 0, bad = 0; const deadIds = [];
+    const retries = [];
+    const deadIds = [];
     results.forEach((r, idx) => {
-      if (r.status === 'fulfilled') ok++;
+      if (r.status === 'fulfilled') sent++;
       else {
-        bad++;
-        const code = r.reason && r.reason.statusCode;
+        const reason = r.reason;
+        const code = reason && reason.statusCode;
         console.error(`Campaign ${c.id} notification failed for subscriber ${slice[idx].id} (HTTP ${code || 'network error'}):`,
-          (r.reason && r.reason.message) || r.reason);
+          (reason && reason.message) || reason);
         if (code === 404 || code === 410) deadIds.push(slice[idx].id);
+        else if (isTransient(reason)) retries.push(slice[idx]);
+        else failed++;
       }
     });
     if (deadIds.length) await run(`UPDATE subscribers SET active=0 WHERE id IN (${deadIds.map(() => '?').join(',')})`, deadIds);
-    await run('UPDATE campaigns SET sent=sent+?, failed=failed+? WHERE id=?', [ok, bad, c.id]);
+    return retries;
+  };
+  for (let i = 0; i < subs.length; i += CHUNK) {
+    retryQueue.push(...await deliver(subs.slice(i, i + CHUNK)));
+    await run('UPDATE campaigns SET sent=?, failed=? WHERE id=?', [sent, failed, c.id]);
+  }
+  if (retryQueue.length) {
+    await sleep(60000);
+    const retryResults = await deliver(retryQueue);
+    failed += retryResults.length;
+    await run('UPDATE campaigns SET sent=?, failed=? WHERE id=?', [sent, failed, c.id]);
+  } else {
+    await run('UPDATE campaigns SET sent=?, failed=? WHERE id=?', [sent, failed, c.id]);
   }
   await run(`UPDATE campaigns SET status=CASE
     WHEN failed=0 THEN 'completed'
