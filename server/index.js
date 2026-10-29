@@ -410,7 +410,7 @@ function makePopup(){
     var status=overlay.querySelector('#pd-push-status'),button=this;
     button.disabled=true;status.textContent='Connecting…';status.className='pd-status';
     try{await subscribe();status.textContent='You\\u2019re subscribed. Thanks for staying connected!';status.className='pd-status success';window.setTimeout(close,1400)}
-    catch(error){if(error.message==='Permission denied'){defer();return}status.textContent=error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
+    catch(error){if(error.message==='Permission denied'){status.textContent='Notifications are blocked. Click the lock/site icon in the address bar, change Notifications to Allow, then refresh this page.';status.className='pd-status error';return}status.textContent=error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
     finally{button.disabled=false}
   };
 }
@@ -428,7 +428,7 @@ async function checkAndShow(){
   previousFocus=document.activeElement;
   setView('push');
 }
-window.PushDesk={subscribe:subscribe,unsubscribe:unsubscribe,supported:supported,showPrompt:function(){makePopup();previousFocus=document.activeElement;setView(PREVIEW||supported()?'push':'email')}};
+window.PushDesk={subscribe:subscribe,unsubscribe:unsubscribe,supported:supported,showPrompt:function(){makePopup();previousFocus=document.activeElement;setView('push')}};
 function banner(){checkAndShow().catch(function(error){console.error('PushDesk popup failed:',error)})}
 var promptDelay=PREVIEW?500:4500;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(banner,promptDelay)});else setTimeout(banner,promptDelay);
