@@ -52,6 +52,7 @@ const SCHEMA = [
   p256dh TEXT NOT NULL,
   auth TEXT NOT NULL,
   browser TEXT, os TEXT, device TEXT, country TEXT, language TEXT, page TEXT,
+  permission TEXT DEFAULT 'granted',
   active INTEGER DEFAULT 1,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   last_seen TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -98,6 +99,10 @@ async function initDb() {
     await run('ALTER TABLE campaigns ADD COLUMN action_label TEXT DEFAULT \'\'');
   }
   await run('CREATE INDEX IF NOT EXISTS idx_campaigns_scheduled ON campaigns(status, scheduled_at)');
+  columns = await all('PRAGMA table_info(subscribers)');
+  if (!columns.some((column) => column.name === 'permission')) {
+    await run("ALTER TABLE subscribers ADD COLUMN permission TEXT DEFAULT 'granted'");
+  }
 }
 
 // Race-safe "create once" setting (several serverless instances may boot together).

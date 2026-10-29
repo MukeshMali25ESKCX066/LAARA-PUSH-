@@ -187,7 +187,7 @@ app.get('/api/sites/:id/stats', auth, ownSite, wrap(async (req, res) => {
   const id = req.site.id;
   const n = async (sql) => (await get(sql, [id])).n;
   const totals = {
-    active: await n('SELECT COUNT(*) n FROM subscribers WHERE site_id=? AND active=1'),
+    active: await n("SELECT COUNT(*) n FROM subscribers WHERE site_id=? AND active=1 AND COALESCE(permission,'granted')='granted'"),
     all: await n('SELECT COUNT(*) n FROM subscribers WHERE site_id=?'),
     campaigns: await n('SELECT COUNT(*) n FROM campaigns WHERE site_id=?'),
     sent: await n('SELECT COALESCE(SUM(sent),0) n FROM campaigns WHERE site_id=?'),
@@ -196,7 +196,7 @@ app.get('/api/sites/:id/stats', auth, ownSite, wrap(async (req, res) => {
   const breakdown = {};
   await Promise.all(SEGMENT_FIELDS.map(async (f) => {
     breakdown[f] = await all(`SELECT COALESCE(NULLIF(${f},''),'Unknown') AS label, COUNT(*) AS n FROM subscribers
-      WHERE site_id=? AND active=1 GROUP BY label ORDER BY n DESC LIMIT 20`, [id]);
+      WHERE site_id=? AND active=1 AND COALESCE(permission,'granted')='granted' GROUP BY label ORDER BY n DESC LIMIT 20`, [id]);
   }));
   const daily = await all(`SELECT date(created_at) d, COUNT(*) n FROM subscribers WHERE site_id=? AND created_at >= date('now','-13 days')
     GROUP BY d ORDER BY d`, [id]);
@@ -205,7 +205,7 @@ app.get('/api/sites/:id/stats', auth, ownSite, wrap(async (req, res) => {
 
 app.get('/api/sites/:id/subscribers', auth, ownSite, wrap(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1), size = 50;
-  const rows = await all(`SELECT id,browser,os,device,country,language,page,active,created_at,last_seen FROM subscribers
+  const rows = await all(`SELECT id,browser,os,device,country,language,page,active,permission,created_at,last_seen FROM subscribers
     WHERE site_id=? ORDER BY id DESC LIMIT ? OFFSET ?`, [req.site.id, size, (page - 1) * size]);
   const total = (await get('SELECT COUNT(*) n FROM subscribers WHERE site_id=?', [req.site.id])).n;
   res.json({ rows, total, page, size });
@@ -304,6 +304,19 @@ app.get('/api/v1/campaigns/:cid', apiKey, wrap(async (req, res) => {
 // ---------- public endpoints used by the embed script / service worker ----------
 const pub = cors({ origin: true });
 app.options('/public/*', pub);
+app.post('/public/permission-denied', pub, wrap(async (req, res) => {
+  const key = clean(req.body && req.body.key, 100);
+  const visitor = clean(req.body && req.body.visitor, 100);
+  const site = key && await get('SELECT * FROM sites WHERE site_key=?', [key]);
+  if (!site || !visitor) return res.status(400).json({ error: 'Invalid request' });
+  const ua = parseUA(req.get('user-agent') || '');
+  const country = (req.get('cf-ipcountry') || req.get('x-vercel-ip-country') || req.get('x-country') || 'Unknown').toUpperCase();
+  await run(`INSERT INTO subscribers(site_id,endpoint,p256dh,auth,browser,os,device,country,language,page,permission,active)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,0) ON CONFLICT(site_id,endpoint) DO UPDATE SET
+    permission='denied', last_seen=CURRENT_TIMESTAMP, page=excluded.page`,
+    [site.id, 'denied:' + visitor, '', '', ua.browser, ua.os, ua.device, country, clean(req.body.language, 20), clean(req.body.page, 500), 'denied']);
+  res.json({ ok: true });
+}));
 app.post('/public/subscribe', pub, wrap(async (req, res) => {
   const { key, subscription, page, language } = req.body || {};
   const site = key && await get('SELECT * FROM sites WHERE site_key=?', [String(key)]);
@@ -356,6 +369,7 @@ function b64(s){var p='='.repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,'+').rep
 function storageGet(key){try{return localStorage.getItem(key)}catch(e){return null}}
 function storageSet(key,value){try{localStorage.setItem(key,String(value))}catch(e){}}
 function storageRemove(key){try{localStorage.removeItem(key)}catch(e){}}
+function visitorId(){var id=storageGet('pd_visitor_'+KEY);if(!id){id=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);storageSet('pd_visitor_'+KEY,id)}return id}
 function supported(){return 'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;}
 function post(path,data){return fetch(SERVER+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(async function(response){if(!response.ok){var result=await response.json().catch(function(){return {}});throw new Error(result.error||'Request failed')}return response.json()})}
 async function saveSubscription(sub){
@@ -410,7 +424,7 @@ function makePopup(){
     var status=overlay.querySelector('#pd-push-status'),button=this;
     button.disabled=true;status.textContent='Connecting…';status.className='pd-status';
     try{await subscribe();status.textContent='You\\u2019re subscribed. Thanks for staying connected!';status.className='pd-status success';window.setTimeout(close,1400)}
-    catch(error){if(error.message==='Permission denied'){status.textContent='Notifications are blocked. Click the lock/site icon in the address bar, change Notifications to Allow, then refresh this page.';status.className='pd-status error';return}status.textContent=error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
+    catch(error){if(error.message==='Permission denied'){post('/public/permission-denied',{key:KEY,visitor:visitorId(),page:location.href,language:navigator.language}).catch(function(){});status.textContent='Notifications are blocked. Click the lock/site icon in the address bar, change Notifications to Allow, then refresh this page.';status.className='pd-status error';return}status.textContent=error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
     finally{button.disabled=false}
   };
 }

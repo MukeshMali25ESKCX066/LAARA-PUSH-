@@ -21,7 +21,7 @@ async function initPush() {
 const getPublicKey = () => publicKey;
 
 function buildAudienceQuery(siteId, segment = {}) {
-  let sql = 'FROM subscribers WHERE site_id=? AND active=1';
+  let sql = "FROM subscribers WHERE site_id=? AND active=1 AND COALESCE(permission,'granted')='granted'";
   const params = [siteId];
   for (const f of SEGMENT_FIELDS) {
     let v = segment[f];
