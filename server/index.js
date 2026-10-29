@@ -389,7 +389,7 @@ function defer(){
   }
   var amount=count(LATER_COUNT)+1;
   storageSet(LATER_COUNT,amount);
-  if(amount>=3){storageSet(NEXT_PROMPT,Date.now()+864e5);close();window.setTimeout(showEmail,2000);window.setTimeout(banner,864e5);return}
+  if(amount>=3){storageSet(NEXT_PROMPT,Date.now()+864e5);close();window.setTimeout(banner,864e5);return}
   storageSet(NEXT_PROMPT,Date.now()+2000);
   close();
   window.setTimeout(banner,2000);
@@ -421,7 +421,7 @@ function makePopup(){
     var status=overlay.querySelector('#pd-push-status'),button=this;
     button.disabled=true;status.textContent='Connecting…';status.className='pd-status';
     try{await subscribe();status.textContent='You\\u2019re subscribed. Thanks for staying connected!';status.className='pd-status success';window.setTimeout(close,1400)}
-    catch(error){status.textContent=error.message==='Permission denied'?'Notifications were blocked. Allow notifications in your browser settings.':error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
+    catch(error){if(error.message==='Permission denied'){close();return}status.textContent=error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
     finally{button.disabled=false}
   };
   overlay.querySelector('#pd-email-form').onsubmit=async function(event){
@@ -440,7 +440,7 @@ async function checkAndShow(){
     makePopup();previousFocus=document.activeElement;setView('push');return;
   }
   var amount=count(LATER_COUNT);
-  if(!PREVIEW&&amount>=3){showEmail();return}
+  if(!PREVIEW&&amount>=3){storageSet(NEXT_PROMPT,Date.now()+864e5);return}
   var nextAt=Number(storageGet(NEXT_PROMPT)||0);
   if(!PREVIEW&&nextAt>Date.now()){window.setTimeout(banner,nextAt-Date.now());return}
   makePopup();
