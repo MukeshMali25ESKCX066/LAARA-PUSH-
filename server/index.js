@@ -349,7 +349,7 @@ function sdkSource(server, key, vapidPublicKey) {
   return `(function(){
 var SERVER=${JSON.stringify(server)},KEY=${JSON.stringify(key)},VAPID=${JSON.stringify(vapidPublicKey)};
 var SW=(window.PUSHDESK_SW_PATH||'/pushdesk-sw.js');
-var PREVIEW=!!window.PUSHDESK_PREVIEW_PROMPT,DONE='pd_done_'+KEY,EMAIL_DONE='pd_email_done_'+KEY;
+var PREVIEW=!!window.PUSHDESK_PREVIEW_PROMPT,DONE='pd_done_'+KEY;
 var LATER_COUNT='pd_later_count_'+KEY,NEXT_PROMPT='pd_next_prompt_'+KEY;
 var previousFocus=null,overlay=null;
 function b64(s){var p='='.repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,'+').replace(/_/g,'/'),r=atob(b),o=new Uint8Array(r.length);for(var i=0;i<r.length;i++)o[i]=r.charCodeAt(i);return o;}
@@ -378,19 +378,14 @@ async function unsubscribe(){
 function count(key){var n=Number(storageGet(key)||0);return Number.isFinite(n)?n:0}
 function setView(name){
   overlay.querySelector('#pd-push-view').hidden=name!=='push';
-  overlay.querySelector('#pd-email-view').hidden=name!=='email';
   overlay.hidden=false;document.body.style.overflow='hidden';
-  (name==='push'?overlay.querySelector('#pd-allow'):overlay.querySelector('#pd-email')).focus({preventScroll:true});
+  overlay.querySelector('#pd-allow').focus({preventScroll:true});
 }
 function close(){if(!overlay)return;overlay.hidden=true;document.body.style.overflow='';if(previousFocus&&previousFocus.focus)previousFocus.focus({preventScroll:true})}
-function showEmail(){setView('email')}
 function defer(){
-  if(overlay&&!overlay.querySelector('#pd-email-view').hidden){
-    storageRemove(LATER_COUNT);storageRemove(NEXT_PROMPT);close();return;
-  }
   var amount=count(LATER_COUNT)+1;
   storageSet(LATER_COUNT,amount);
-  if(amount>=3){storageSet(NEXT_PROMPT,Date.now()+864e5);makePopup();setView('email');return}
+  if(amount>=3){storageRemove(LATER_COUNT);storageRemove(NEXT_PROMPT);close();return}
   storageSet(NEXT_PROMPT,Date.now()+2000);
   close();
   window.setTimeout(banner,2000);
@@ -405,16 +400,10 @@ function makePopup(){
     '<div class="pd-eyebrow"><span id="pd-site-name"></span> updates</div><h2 id="pd-title">Don\\u2019t Miss What\\u2019s New!</h2><p class="pd-subtitle">Stay updated with the latest news, useful updates and important announcements\\u2014delivered straight to your device.</p>'+
     '<ul class="pd-benefits"><li><span class="pd-check">✓</span><span>Get important updates on time</span></li><li><span class="pd-check">✓</span><span>Be among the first to know what\\u2019s new</span></li><li><span class="pd-check">✓</span><span>Receive updates that matter to you</span></li></ul>'+
     '<button class="pd-primary" id="pd-allow" type="button">🔔 Yes, Keep Me Updated</button><button class="pd-later" id="pd-later" type="button">Maybe Later</button>'+
-    '<p class="pd-privacy">Your choice matters. You can change notification settings in your browser anytime.</p><p class="pd-status" id="pd-push-status" aria-live="polite"></p></div>'+
-    '<div class="pd-view" id="pd-email-view" hidden><div class="pd-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>'+
-    '<div class="pd-eyebrow">Stay connected</div><h2>Get Updates in Your Inbox</h2><p class="pd-subtitle">Prefer email updates? Sign up to receive this website\\u2019s latest stories and important updates directly in your inbox.</p>'+
-    '<form class="pd-form" id="pd-email-form"><label for="pd-email">Email address</label><input id="pd-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required maxlength="254"><button class="pd-primary" type="submit">Subscribe for Updates</button></form>'+
-    '<p class="pd-privacy">Your email is saved for this website\\u2019s updates. Email delivery must be configured by the site owner.</p><p class="pd-status" id="pd-email-status" aria-live="polite"></p><button class="pd-later" id="pd-email-later" type="button">Maybe Later</button><button class="pd-back" id="pd-back" type="button">← Back to notification options</button></div></section>';
+    '<p class="pd-privacy">Your choice matters. You can change notification settings in your browser anytime.</p><p class="pd-status" id="pd-push-status" aria-live="polite"></p></div></section>';
   document.body.appendChild(overlay);overlay.querySelector('#pd-site-name').textContent=location.hostname;
   overlay.querySelector('#pd-close').onclick=defer;
   overlay.querySelector('#pd-later').onclick=defer;
-  overlay.querySelector('#pd-email-later').onclick=defer;
-  overlay.querySelector('#pd-back').onclick=function(){setView('push')};
   overlay.addEventListener('click',function(event){if(event.target===overlay)defer()});
   document.addEventListener('keydown',function(event){if(event.key==='Escape'&&!overlay.hidden)defer()});
   overlay.querySelector('#pd-allow').onclick=async function(){
@@ -424,28 +413,20 @@ function makePopup(){
     catch(error){if(error.message==='Permission denied'){defer();return}status.textContent=error.message==='Permission default'?'Choose Allow in the browser notification prompt.':!supported()?'Push notifications are not supported in this browser.':'Could not complete the push subscription. Please try again.';status.className='pd-status error'}
     finally{button.disabled=false}
   };
-  overlay.querySelector('#pd-email-form').onsubmit=async function(event){
-    event.preventDefault();
-    var input=overlay.querySelector('#pd-email'),status=overlay.querySelector('#pd-email-status'),button=this.querySelector('button[type=submit]');
-    status.textContent='Saving your email…';status.className='pd-status';button.disabled=true;
-    try{await post('/public/email-subscribe',{key:KEY,email:input.value.trim(),source:'pushdesk-notification-popup'});storageSet(EMAIL_DONE,'1');status.textContent='Thanks! Your email signup has been saved. Email delivery is not configured yet.';status.className='pd-status success';window.setTimeout(close,2400)}
-    catch(error){status.textContent=error.message||'Could not save your email. Please try again.';status.className='pd-status error'}
-    finally{button.disabled=false}
-  };
 }
 async function checkAndShow(){
-  if(window.PUSHDESK_NO_PROMPT||(!PREVIEW&&(storageGet(DONE)==='1'||storageGet(EMAIL_DONE)==='1')))return;
+  if(window.PUSHDESK_NO_PROMPT||(!PREVIEW&&storageGet(DONE)==='1'))return;
   if(!PREVIEW&&'Notification' in window&&Notification.permission==='granted'){
     try{var reg=await navigator.serviceWorker.getRegistration(SW),sub=reg&&await reg.pushManager.getSubscription();if(!sub)await subscribe();else await saveSubscription(sub)}catch(error){console.error('PushDesk: could not restore existing push subscription',error)}
     return;
   }
   var amount=count(LATER_COUNT);
-  if(!PREVIEW&&amount>=3){makePopup();previousFocus=document.activeElement;setView('email');return}
+  if(!PREVIEW&&amount>=3){storageRemove(LATER_COUNT);makePopup();previousFocus=document.activeElement;setView('push');return}
   var nextAt=Number(storageGet(NEXT_PROMPT)||0);
   if(!PREVIEW&&nextAt>Date.now()){window.setTimeout(banner,nextAt-Date.now());return}
   makePopup();
   previousFocus=document.activeElement;
-  setView(PREVIEW||supported()&&Notification.permission!=='denied'?'push':'email');
+  setView('push');
 }
 window.PushDesk={subscribe:subscribe,unsubscribe:unsubscribe,supported:supported,showPrompt:function(){makePopup();previousFocus=document.activeElement;setView(PREVIEW||supported()?'push':'email')}};
 function banner(){checkAndShow().catch(function(error){console.error('PushDesk popup failed:',error)})}

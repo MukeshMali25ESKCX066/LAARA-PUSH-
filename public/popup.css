@@ -115,7 +115,7 @@
 }
 .pd-primary:hover { filter: brightness(.97); }
 .pd-primary:disabled { cursor: wait; opacity: .7; }
-.pd-later, .pd-back {
+.pd-later {
   display: block;
   margin: 13px auto 0;
   padding: 8px 14px;
@@ -125,20 +125,8 @@
   font: 650 13px/1.4 Inter, Arial, sans-serif;
   cursor: pointer;
 }
-.pd-later:hover, .pd-back:hover { text-decoration: underline; }
+.pd-later:hover { text-decoration: underline; }
 .pd-privacy { margin: 15px 0 0; color: #98a2b3; font-size: 11px; line-height: 1.5; text-align: center; }
-.pd-form { display: grid; gap: 12px; margin-top: 18px; }
-.pd-form label { color: #344054; font-size: 12px; font-weight: 750; }
-.pd-form input {
-  width: 100%;
-  padding: 14px;
-  border: 1px solid #d0d5dd;
-  border-radius: 11px;
-  background: #fff;
-  color: #182230;
-  font: 14px Inter, Arial, sans-serif;
-}
-.pd-form input:focus { outline: 2px solid #f9731633; border-color: #f97316; }
 .pd-status { margin: 10px 0 0; color: #475467; font-size: 12px; line-height: 1.5; text-align: center; }
 .pd-status.error { color: #b42318; }
 .pd-status.success { color: #027a48; }
