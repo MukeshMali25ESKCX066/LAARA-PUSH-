@@ -25,6 +25,13 @@ const imageTypes = new Map([
   ['image/gif', 'gif']
 ]);
 const maxImageUploadSize = 4 * 1024 * 1024;
+// Cloudinary image storage (CLOUDINARY_URL=cloudinary://KEY:SECRET@CLOUD or the 3 separate variables)
+const cldFromUrl = /^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/.exec((process.env.CLOUDINARY_URL || '').trim()) || [];
+const cloudinaryCloudName = (process.env.CLOUDINARY_CLOUD_NAME || cldFromUrl[3] || '').trim();
+const cloudinaryApiKey = (process.env.CLOUDINARY_API_KEY || cldFromUrl[1] || '').trim();
+const cloudinaryApiSecret = (process.env.CLOUDINARY_API_SECRET || cldFromUrl[2] || '').trim();
+const cloudinaryFolder = (process.env.CLOUDINARY_FOLDER || 'pushdesk').trim();
+const cloudinaryUploadPreset = (process.env.CLOUDINARY_UPLOAD_PRESET || '').trim();
 
 let JWT_SECRET = process.env.JWT_SECRET || null;
 const ready = (async () => {
@@ -96,9 +103,8 @@ app.post('/api/auth/login', wrap(async (req, res) => {
 }));
 app.get('/api/me', auth, (req, res) => res.json({ ...req.user, base_url: origin(req) }));
 app.get('/api/cloudinary-config', auth, (req, res) => {
-  const cloudName = clean(process.env.CLOUDINARY_CLOUD_NAME, 200);
-  const uploadPreset = clean(process.env.CLOUDINARY_UPLOAD_PRESET, 200);
-  res.json({ configured: !!cloudName && !!uploadPreset, cloudName, uploadPreset });
+  res.json({ configured: !!cloudinaryCloudName && !!(cloudinaryUploadPreset || (cloudinaryApiKey && cloudinaryApiSecret)),
+    cloudName: cloudinaryCloudName, uploadPreset: cloudinaryUploadPreset });
 });
 
 // ---------- sites ----------
@@ -126,7 +132,6 @@ app.post('/api/sites/:id/rotate-key', auth, ownSite, wrap(async (req, res) => {
 }));
 
 app.post('/api/sites/:id/images', auth, ownSite, (req, res, next) => {
-  if (process.env.VERCEL) return next(httpErr(501, 'Image uploads are not available on Vercel. Use a public image URL instead.'));
   const type = (req.get('content-type') || '').split(';')[0].toLowerCase();
   if (!imageTypes.has(type)) return next(httpErr(415, 'Upload a PNG, JPEG, WebP, or GIF image.'));
   express.raw({ type: () => true, limit: maxImageUploadSize })(req, res, (error) => error ? next(error) : next());
@@ -145,6 +150,34 @@ app.post('/api/sites/:id/images', auth, ownSite, (req, res, next) => {
   if (!validSignature) throw httpErr(400, 'The file contents do not match the selected image type.');
 
   const filename = `${rand(16)}.${imageTypes.get(type)}`;
+  if (process.env.VERCEL || cloudinaryCloudName || cloudinaryApiKey || cloudinaryApiSecret || cloudinaryUploadPreset) {
+    const signed = !!(cloudinaryApiKey && cloudinaryApiSecret);
+    if (!cloudinaryCloudName || (!signed && !cloudinaryUploadPreset)) {
+      throw httpErr(503, 'Image uploads need CLOUDINARY_CLOUD_NAME plus either CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET, or CLOUDINARY_UPLOAD_PRESET (unsigned). Configure them in Vercel and redeploy.');
+    }
+    const publicId = filename.replace(/\.[^.]+$/, '');
+    const form = new FormData();
+    form.append('file', new Blob([image], { type }), filename);
+    if (signed) {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const signature = crypto.createHash('sha1')
+        .update(`folder=${cloudinaryFolder}&public_id=${publicId}&timestamp=${timestamp}${cloudinaryApiSecret}`).digest('hex');
+      form.append('api_key', cloudinaryApiKey);
+      form.append('timestamp', String(timestamp));
+      form.append('folder', cloudinaryFolder);
+      form.append('public_id', publicId);
+      form.append('signature', signature);
+    } else {
+      form.append('upload_preset', cloudinaryUploadPreset);
+    }
+    const cldResponse = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudinaryCloudName)}/image/upload`, { method: 'POST', body: form });
+    const cldData = await cldResponse.json().catch(() => ({}));
+    if (!cldResponse.ok || !cldData.secure_url) {
+      const reason = (cldData.error && cldData.error.message) || 'unknown error';
+      throw httpErr(502, `Cloudinary upload failed (HTTP ${cldResponse.status}): ${String(reason).slice(0, 150)}`);
+    }
+    return res.json({ url: cldData.secure_url });
+  }
   await fs.mkdir(uploadDir, { recursive: true });
   await fs.writeFile(path.join(uploadDir, filename), image, { flag: 'wx' });
   res.json({ url: `${origin(req)}/uploads/${filename}` });
